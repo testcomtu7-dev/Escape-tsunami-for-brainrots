@@ -1,0 +1,242 @@
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local UICorner = Instance.new("UICorner")
+local Title = Instance.new("TextLabel")
+local Credit = Instance.new("TextLabel")
+local UIListLayout = Instance.new("UIListLayout")
+local ButtonHolder = Instance.new("Frame")
+
+ScreenGui.Name = "BrainrotPremium_v4"
+ScreenGui.Parent = game:GetService("CoreGui") or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.ResetOnSpawn = false
+
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.Position = UDim2.new(0.05, 0, 0.25, 0)
+MainFrame.Size = UDim2.new(0, 240, 0, 310)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+UICorner.CornerRadius = UDim.new(0, 10)
+UICorner.Parent = MainFrame
+
+Title.Name = "Title"
+Title.Parent = MainFrame
+Title.BackgroundTransparency = 1
+Title.Position = UDim2.new(0, 0, 0, 5)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "BRAINROT HUB v4 👑"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 16
+
+ButtonHolder.Name = "ButtonHolder"
+ButtonHolder.Parent = MainFrame
+ButtonHolder.BackgroundTransparency = 1
+ButtonHolder.Position = UDim2.new(0.05, 0, 0.13, 0)
+ButtonHolder.Size = UDim2.new(0.9, 0, 0.75, 0)
+
+UIListLayout.Parent = ButtonHolder
+UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+UIListLayout.Padding = UDim.new(0, 6)
+
+Credit.Name = "Credit"
+Credit.Parent = MainFrame
+Credit.BackgroundTransparency = 1
+Credit.Position = UDim2.new(0, 0, 0.91, 0)
+Credit.Size = UDim2.new(1, 0, 0, 20)
+Credit.Font = Enum.Font.Gotham
+Credit.Text = "Hyper CFrame Boost | Скорость разблокирована"
+Credit.TextColor3 = Color3.fromRGB(0, 255, 150)
+Credit.TextSize = 10
+
+local function createButton(name, text, color)
+    local btn = Instance.new("TextButton")
+    local corner = Instance.new("UICorner")
+    btn.Name = name
+    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.BackgroundColor3 = color
+    btn.Font = Enum.Font.Gotham
+    btn.Text = text
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 12
+    corner.CornerRadius = UDim.new(0, 6)
+    corner.Parent = btn
+    btn.Parent = ButtonHolder
+    return btn
+end
+
+local ToggleBtn = createButton("ToggleBtn", "ESP на редких: ВЫКЛ", Color3.fromRGB(200, 50, 50))
+local TracerBtn = createButton("TracerBtn", "Линия к ценному: ВЫКЛ", Color3.fromRGB(200, 50, 50))
+
+-- Поле ввода скорости (теперь принимает реальные значения)
+local SpeedInput = Instance.new("TextBox")
+local SpeedCorner = Instance.new("UICorner")
+SpeedInput.Name = "SpeedInput"
+SpeedInput.Parent = ButtonHolder
+SpeedInput.Size = UDim2.new(1, 0, 0, 35)
+SpeedInput.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+SpeedInput.Font = Enum.Font.Gotham
+SpeedInput.PlaceholderText = "Введи скорость (например, 50)..."
+SpeedInput.Text = ""
+SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedInput.TextSize = 12
+SpeedCorner.CornerRadius = UDim.new(0, 6)
+SpeedCorner.Parent = SpeedInput
+
+local JumpBtn = createButton("JumpBtn", "Бесконечный прыжок: ВЫКЛ", Color3.fromRGB(200, 50, 50))
+local NoclipBtn = createButton("NoclipBtn", "Проход сквозь стены: ВЫКЛ", Color3.fromRGB(200, 50, 50))
+
+local espEnabled = false
+local tracerEnabled = false
+local infJumpEnabled = false
+local noclipEnabled = false
+local customSpeed = 0 -- Новое значение скорости
+
+local currentTarget = nil
+local RARE_KEYWORDS = {"Golden", "Titan", "Brainrot", "Skibidi", "Sigma", "Legendary", "Secret", "Mythical"}
+
+local Camera = workspace.CurrentCamera
+local Player = game:GetService("Players").LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local function getRareValue(object)
+    if not object or object == Player.Character or object:IsDescendantOf(Player.Character) then return 0 end
+    local nameLower = string.lower(object.Name)
+    for i = #RARE_KEYWORDS, 1, -1 do
+        if string.find(nameLower, string.lower(RARE_KEYWORDS[i])) then return i end
+    end
+    return 0
+end
+
+local function clearESP()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        local hl = obj:FindFirstChild("RareHighlight")
+        if hl then hl:Destroy() end
+    end
+end
+
+local Line = Drawing.new("Line")
+Line.Visible = false
+Line.Color = Color3.fromRGB(255, 215, 0)
+Line.Thickness = 2
+Line.Transparency = 0.8
+
+task.spawn(function()
+    while true do
+        task.wait(1.5)
+        if espEnabled or tracerEnabled then
+            local highestValue = 0
+            local bestObj = nil
+            for _, obj in ipairs(workspace:GetDescendants()) do
+                if obj:IsA("Model") or (obj:IsA("BasePart") and obj.Parent == workspace) then
+                    local val = getRareValue(obj)
+                    if val > 0 then
+                        if espEnabled and not obj:FindFirstChild("RareHighlight") then
+                            local hl = Instance.new("Highlight")
+                            hl.Name = "RareHighlight"
+                            hl.FillColor = (val >= #RARE_KEYWORDS-1) and Color3.fromRGB(255, 0, 255) or Color3.fromRGB(0, 255, 0)
+                            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            hl.FillTransparency = 0.6
+                            hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+                            hl.Parent = obj
+                        end
+                        if val > highestValue then
+                            highestValue = val
+                            bestObj = obj
+                        end
+                    end
+                end
+            end
+            currentTarget = bestObj
+        end
+    end
+end)
+
+ToggleBtn.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    ToggleBtn.Text = espEnabled and "ESP на редких: ВКЛ" or "ESP на редких: ВЫКЛ"
+    ToggleBtn.BackgroundColor3 = espEnabled and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(200, 50, 50)
+    if not espEnabled then clearESP() end
+end)
+
+TracerBtn.MouseButton1Click:Connect(function()
+    tracerEnabled = not tracerEnabled
+    TracerBtn.Text = tracerEnabled and "Линия к ценному: ВКЛ" or "Линия к ценному: ВЫКЛ"
+    TracerBtn.BackgroundColor3 = tracerEnabled and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(200, 50, 50)
+    if not tracerEnabled then Line.Visible = false end
+end)
+
+-- Обновленный ввод скорости
+SpeedInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local value = tonumber(SpeedInput.Text)
+        if value then
+            customSpeed = value
+            SpeedInput.Text = "Скорость: " .. value
+            SpeedInput.BackgroundColor3 = Color3.fromRGB(50, 150, 255)
+        else
+            customSpeed = 0
+            SpeedInput.Text = ""
+            SpeedInput.PlaceholderText = "Введи число!"
+            SpeedInput.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+        end
+    end
+end)
+
+JumpBtn.MouseButton1Click:Connect(function()
+    infJumpEnabled = not infJumpEnabled
+    JumpBtn.Text = infJumpEnabled and "Бесконечный прыжок: ВКЛ" or "Бесконечный прыжок: ВЫКЛ"
+    JumpBtn.BackgroundColor3 = infJumpEnabled and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled and Player.Character and Player.Character:FindFirstChildOfClass("Humanoid") then
+        Player.Character:FindFirstChildOfClass("Humanoid"):ChangeState("Jumping")
+    end
+end)
+
+NoclipBtn.MouseButton1Click:Connect(function()
+    noclipEnabled = not noclipEnabled
+    NoclipBtn.Text = noclipEnabled and "Проход сквозь стены: ВКЛ" or "Проход сквозь стены: ВЫКЛ"
+    NoclipBtn.BackgroundColor3 = noclipEnabled and Color3.fromRGB(50, 180, 50) or Color3.fromRGB(200, 50, 50)
+end)
+
+-- Оптимизированный цикл перемещения с привязкой к DeltaTime
+game:GetService("RunService").Heartbeat:Connect(function(deltaTime)
+    -- УСИЛЕННЫЙ CFRAME BOOST
+    if Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and customSpeed > 0 then
+        local humanoid = Player.Character:FindFirstChildOfClass("Humanoid")
+        -- Если игрок зажимает клавиши движения или джойстик
+        if humanoid and humanoid.MoveDirection.Magnitude > 0 then
+            -- Вычисляем нужное смещение (customSpeed теперь симулирует реальный WalkSpeed)
+            local targetVelocity = humanoid.MoveDirection * customSpeed
+            Player.Character.HumanoidRootPart.CFrame = Player.Character.HumanoidRootPart.CFrame + (targetVelocity * deltaTime)
+        end
+    end
+    
+    if noclipEnabled and Player.Character then
+        for _, child in ipairs(Player.Character:GetDescendants()) do
+            if child:IsA("BasePart") and child.CanCollide then
+                child.CanCollide = false
+            end
+        end
+    end
+    
+    if tracerEnabled and currentTarget and currentTarget.Parent then
+        local targetPart = currentTarget:IsA("Model") and (currentTarget.PrimaryPart or currentTarget:FindFirstChildWhichIsA("BasePart")) or currentTarget
+        if targetPart then
+            local screenPos, onScreen = Camera:WorldToViewportPoint(targetPart.Position)
+            if onScreen then
+                Line.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+                Line.To = Vector2.new(screenPos.X, screenPos.Y)
+                Line.Visible = true
+                return
+            end
+        end
+    end
+    Line.Visible = false
+end)
+
+print("Brainrot Premium v4 Успешно запущен!")
